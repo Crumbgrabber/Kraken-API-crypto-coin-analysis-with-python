@@ -36,6 +36,9 @@ The thumbnails are line charts, but when you click on a chart, the bigger ones u
    - `--timeframes monthly,daily,4h` to limit frames
    - `--limit N` / `--start N` to batch through the pair list
 
+   - For the full 600+ pair run, budget ~20 minutes (set a generous process timeout if your shell enforces one).
+   - For a quick smoke test, use `--limit 25` (or similar) to keep runtimes short.
+
 3) **Open the report**  
    - `results/summary.html` for the full sortable table and sparklines  
    - `results/{PAIR}.html` and `{PAIR}_{tf}.html` for Plotly charts  
