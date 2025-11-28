@@ -10,7 +10,9 @@ __pycache__/
 *.log
 .DS_Store
 
-/results/
+/results/*
+!/results/
+!/results/crumbgrabber.png
 /data/cache/
 /data/indicators/
 /data/ohlc_state.json
