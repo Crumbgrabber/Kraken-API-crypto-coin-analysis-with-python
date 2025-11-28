@@ -246,10 +246,12 @@ def _row_class(monthly_pass: bool, daily_pass: bool, h4_pass: bool) -> str:
 
 def export_summary_html(results: List[PairResult], path: Path) -> None:
     oi_map = _load_oi_funding()
-    hero_b64 = ""
-    hero_img = settings.RESULTS_DIR / "crumbgrabber.png"
+    hero_src = ""
+    hero_filename = "crumbgrabber.png"
+    hero_img = settings.RESULTS_DIR / hero_filename
     if hero_img.exists():
-        hero_b64 = base64.b64encode(hero_img.read_bytes()).decode("ascii")
+        # Use a relative img tag so dropping the file into results/ and refreshing works without regenerating.
+        hero_src = hero_filename
 
     rows_html = []
     for res in results:
@@ -308,7 +310,7 @@ def export_summary_html(results: List[PairResult], path: Path) -> None:
             """
         )
 
-    hero_img_tag = f"<img src='data:image/png;base64,{hero_b64}' alt='Crumbgrabber' />" if hero_b64 else ""
+    hero_img_tag = f"<img src='{hero_src}' alt='Crumbgrabber' />" if hero_src else ""
     html = f"""<!doctype html>
 <html>
 <head>
