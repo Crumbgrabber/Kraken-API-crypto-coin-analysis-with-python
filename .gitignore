@@ -25,4 +25,7 @@ __pycache__/
 /agents/
 workflow.yml
 /docs/PLAN.md
+/docs/meme-coin-short-framework.md
 /tasks.md
+run_main.sh
+backups/

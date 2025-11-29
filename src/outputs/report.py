@@ -136,9 +136,9 @@ def summarize_to_console(results: List[PairResult], top_n: int = 20) -> None:
     print(f"{'Pair':10} {'Score':>8} {'M':>3} {'D':>3} {'4h':>3}")
     for res in results[:top_n]:
         tf_map = _timeframe_map(res.outcomes)
-        m = "Y" if tf_map.get("monthly", TimeframeOutcome("", None, None, 0, 0)).passed else "N"
-        d = "Y" if tf_map.get("daily", TimeframeOutcome("", None, None, 0, 0)).passed else "N"
-        h = "Y" if tf_map.get("4h", TimeframeOutcome("", None, None, 0, 0)).passed else "N"
+        m = "Y" if tf_map.get("monthly") and tf_map["monthly"].passed else "N"
+        d = "Y" if tf_map.get("daily") and tf_map["daily"].passed else "N"
+        h = "Y" if tf_map.get("4h") and tf_map["4h"].passed else "N"
         print(f"{res.wsname:10} {res.score:8.3f} {m:>3} {d:>3} {h:>3}")
 
 
@@ -160,16 +160,19 @@ def export_tabular(results: List[PairResult], csv_path: Path, json_path: Path) -
                 "monthly_pattern_score": monthly.pattern.score if monthly else 0.0,
                 "monthly_volume_decline": monthly.volume_decline_score if monthly else 0.0,
                 "monthly_poc_score": monthly.poc_distance_score if monthly else 0.0,
+                "monthly_indicator_score": monthly.indicator_score if monthly else 0.0,
                 "daily_passed": daily.passed if daily else False,
                 "daily_slope": daily.pattern.slope if daily else 0.0,
                 "daily_pattern_score": daily.pattern.score if daily else 0.0,
                 "daily_volume_decline": daily.volume_decline_score if daily else 0.0,
                 "daily_poc_score": daily.poc_distance_score if daily else 0.0,
+                "daily_indicator_score": daily.indicator_score if daily else 0.0,
                 "4h_passed": h4.passed if h4 else False,
                 "4h_slope": h4.pattern.slope if h4 else 0.0,
                 "4h_pattern_score": h4.pattern.score if h4 else 0.0,
                 "4h_volume_decline": h4.volume_decline_score if h4 else 0.0,
                 "4h_poc_score": h4.poc_distance_score if h4 else 0.0,
+                "4h_indicator_score": h4.indicator_score if h4 else 0.0,
             }
         )
     df = pd.DataFrame(rows)
@@ -333,6 +336,8 @@ def export_summary_html(results: List[PairResult], path: Path) -> None:
     .pill.pass {{ background: #2a9d4b; }}
     .pill.fail {{ background: #c0392b; }}
     .num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+    .num.pos {{ color: #2a9d4b; }}
+    .num.neg {{ color: #c0392b; }}
     .legend {{ font-size: 13px; color: #444; }}
     .badge {{ display: inline-block; background: #2a9d4b; color: #fff; padding: 2px 6px; border-radius: 6px; font-size: 12px; }}
     .spark {{ height: 40px; width: 120px; }}
@@ -376,7 +381,8 @@ def export_summary_html(results: List[PairResult], path: Path) -> None:
   <script>
     const table = document.getElementById('coins').getElementsByTagName('tbody')[0];
     const headers = document.querySelectorAll('th.sortable');
-    let sortState = {{ key: 'score', dir: -1 }};
+    // Default: sort ascending so the most negative scores (best shorts) appear first.
+    let sortState = {{ key: 'score', dir: 1 }};
     headers.forEach(h => {{
       h.addEventListener('click', () => {{
         const key = h.dataset.key;
@@ -410,6 +416,22 @@ def export_summary_html(results: List[PairResult], path: Path) -> None:
         default: return row.cells[0].innerText;
       }}
     }}
+
+    // Color numeric cells by sign (negative red, positive green)
+    const numCells = document.querySelectorAll('.num');
+    numCells.forEach(cell => {{
+      const raw = cell.innerText.trim();
+      if (!raw || raw === '—') return;
+      let txt = raw.replace(/,/g, '');
+      let multiplier = 1;
+      if (txt.endsWith('%')) txt = txt.slice(0, -1);
+      if (txt.endsWith('M')) {{ multiplier = 1_000_000; txt = txt.slice(0, -1); }}
+      else if (txt.endsWith('K')) {{ multiplier = 1_000; txt = txt.slice(0, -1); }}
+      const val = parseFloat(txt) * multiplier;
+      if (Number.isNaN(val) || val === 0) return;
+      if (val < 0) cell.classList.add('neg');
+      if (val > 0) cell.classList.add('pos');
+    }});
   </script>
 </body>
 </html>

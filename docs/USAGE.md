@@ -2,14 +2,14 @@
 
 ## Install
 ```bash
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 Ensure `.env` contains `KRAKENAPIKEY` and `KRAKENPRIVATEKEY` if you later add private calls. Public OHLC does not require auth.
 
 ## Run analyzer
 ```bash
-python main.py --top 15
+uv run python main.py --top 15
 ```
 
 Flags:
@@ -26,10 +26,13 @@ Flags:
 - `--refresh-risk-rates` attempts to cache futures risk rates to `data/cache/risk_rates.json` (writes a stub if the endpoint is unavailable).
 
 Outputs:
-- Console table (score + per-timeframe pass/fail).
+- Console table (score + per-timeframe pass/fail); more negative score means a stronger short candidate.
 - `results/analysis.csv` and `results/analysis.json`
 - Plotly HTML charts under `results/` for every pair/timeframe (`{pair}_monthly.html`, `{pair}_daily.html`, `{pair}_4h.html`) plus a rollup `{pair}.html` for top-N.
 - `results/summary.html` includes mini-chart thumbnails (monthly/daily/4h) linking to full charts, OI/funding columns, and quick filters (class, Solana-only, score/oi/funding thresholds, text search).
+
+## Long-run helper (60-minute timeout)
+- `./run_main.sh --refresh` activates `.venv`, loads `.env`, updates `requirements.txt` with `uv`, and runs `main.py` with a 60-minute timeout (passes through extra flags).
 
 ## Indicators (EMA)
 - Compute EMAs for all cached OHLC: `PYTHONPATH=. .venv/bin/python src/analysis/compute_indicators.py --timeframes monthly,daily,4h [--limit N] [--start N] [--pairs ALT1,ALT2]`
@@ -39,12 +42,13 @@ Outputs:
   - 4h: ema_5, ema_7
 - Requires cached OHLC in `data/cache/` and pairs list in `data/pairs_usd.csv` (export with `main.py --export-pairs` if missing).
 
-## Scoring logic (no hard fail)
-- Each timeframe gets a pattern score (0..1) for descending highs; small breaks reduce the score instead of hard-failing the pair.
-- Volume decline and proximity to POC contribute to per-timeframe score.
-- Scores are weighted across monthly/daily/4h; Solana memecoins get +1.
+## Scoring logic (simplified votes)
+- Per timeframe we total indicator votes: EMA slopes (all available EMAs, using a short slope window), returns (YTD/30d/7d), and N-bars up/down (last 5 bars; higher highs/lows add +1, lower highs/lows -1). Missing indicators don’t contribute.
+- Each indicator has a tunable weight (defaults all 1.0) in `config/indicator_config.py`.
+- Timeframe multipliers: monthly x4, daily x2, 4h x1; final score is the weighted sum (more negative = better short).
+- Solana memecoins can add a negative bias via `SOL_BONUS` (currently 0).
 
 ## Scoring highlights
 - Hard fail if any timeframe violates strict lower highs (zero tolerance).
 - Volume profile POC proximity and volume decline contribute to score.
-- Solana memecoins get +1 (base asset in the allowlist).
+- Solana memecoins get a bias toward more negative scores (base asset in the allowlist).

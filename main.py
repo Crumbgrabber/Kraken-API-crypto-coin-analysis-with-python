@@ -37,7 +37,7 @@ def analyze_pair(client: KrakenPublicClient, pair: PairMeta, refresh: bool, time
         else:
             pattern = detect_lower_highs_scored(df, min_peaks=PATTERN_MIN_PEAKS[tf], order=PATTERN_ORDER[tf])
         vp = compute_volume_profile(df)
-        outcome = score_timeframe(tf, df, pattern, vp)
+        outcome = score_timeframe(tf, df, pattern, vp, pair.altname)
         outcomes.append(outcome)
 
     score = aggregate_score(outcomes, pair.is_solana)
@@ -92,7 +92,8 @@ def run(
         if res:
             results.append(res)
 
-    results.sort(key=lambda r: r.score, reverse=True)
+    # More negative scores indicate stronger short candidates.
+    results.sort(key=lambda r: r.score)
     summarize_to_console(results, top_n=top)
     export_tabular(results, settings.RESULTS_CSV, settings.RESULTS_JSON)
     export_plotly(results, settings.RESULTS_DIR, top_n=plotly_top or settings.PLOTLY_TOP_N)
